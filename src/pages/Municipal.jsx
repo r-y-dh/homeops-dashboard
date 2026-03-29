@@ -77,6 +77,19 @@ export default function MunicipalPage() {
   if (loading) return <div style={{ color: T.textMuted, padding: 40 }}>Loading…</div>
   const latest = entries.length ? entries[entries.length - 1] : null
 
+  // Missing months in the past 12 months
+  const missingMonths = (() => {
+    const now = new Date()
+    const present = new Set(entries.map(e => e.month))
+    const missing = []
+    for (let i = 1; i <= 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (!present.has(key)) missing.unshift(key)
+    }
+    return missing
+  })()
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
@@ -103,6 +116,26 @@ export default function MunicipalPage() {
           </button>
         </div>
       </div>
+
+      {missingMonths.length > 0 && (
+        <div style={{ background: T.cardAlt, border: `1px solid ${T.amberDim}`, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: T.amber, marginBottom: 6 }}>
+            Missing statements — {missingMonths.length} month{missingMonths.length > 1 ? 's' : ''} in the past year
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {missingMonths.map(m => (
+              <span
+                key={m}
+                onClick={() => { setForm({ ...EMPTY_FORM, month: m }); setShowForm(true) }}
+                style={{ fontSize: 11, color: T.amber, background: `${T.amber}18`, border: `1px solid ${T.amberDim}`, borderRadius: 5, padding: '3px 8px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}
+              >
+                {m}
+              </span>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: T.textDim, marginTop: 6 }}>Click a month to add it, or upload its PDF above.</div>
+        </div>
+      )}
 
       {pdfState === 'error' && (
         <div style={{ background: T.redDim, border: `1px solid ${T.red}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12, color: T.red }}>
