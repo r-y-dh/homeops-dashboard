@@ -36,11 +36,11 @@ const fmtN = (v) => v != null && v !== '' ? Number(v).toLocaleString() : '—'
 
 // Table header cell
 const TH = ({ children, style = {} }) => (
-  <th style={{ textAlign: 'left', padding: '5px 6px', color: T.textDim, fontWeight: 500, fontSize: 9, textTransform: 'uppercase', whiteSpace: 'nowrap', ...style }}>{children}</th>
+  <th style={{ textAlign: 'left', padding: '6px 8px', color: T.textDim, fontWeight: 500, fontSize: 10, textTransform: 'uppercase', whiteSpace: 'nowrap', ...style }}>{children}</th>
 )
 // Table data cell
 const TD = ({ children, style = {} }) => (
-  <td style={{ padding: '5px 6px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, ...style }}>{children}</td>
+  <td style={{ padding: '6px 8px', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, ...style }}>{children}</td>
 )
 
 export default function MunicipalPage() {
@@ -119,111 +119,32 @@ export default function MunicipalPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 17, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Buildings size={18} weight="fill" /> Municipal Account
-          </h2>
-          <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>Water • Rates • Refuse • Sewerage</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input ref={fileRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handlePDF} />
-          <button onClick={() => fileRef.current?.click()} disabled={pdfState === 'parsing'}
-            style={{ background: T.cardAlt, color: T.cyan, border: `1px solid ${T.cyanDim}`, borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: pdfState === 'parsing' ? 0.6 : 1 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {pdfState === 'parsing' ? <><CircleNotch size={14} style={{ animation: 'spin 1s linear infinite' }} /> Reading PDF…</> : <><FilePdf size={14} /> Upload PDF</>}
-            </span>
-          </button>
-          <button onClick={() => { setShowForm(!showForm); setForm(EMPTY_FORM) }}
-            style={{ background: showForm ? T.border : T.cyan, color: showForm ? T.text : T.bg, border: 'none', borderRadius: 7, padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            {showForm ? 'Cancel' : '+ Add Month'}
-          </button>
-        </div>
-      </div>
-
-      {/* Property info strip */}
-      {prop && (
-        <div style={{ display: 'flex', gap: 20, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: '8px 14px', marginBottom: 12, flexWrap: 'wrap' }}>
-          {[['Stand Size', prop.stand_size ? `${Number(prop.stand_size).toLocaleString()} m²` : null],
-            ['Portion',    prop.portion],
-            ['Valuation',  prop.valuation ? `R${Number(prop.valuation).toLocaleString()}` : null],
-            ['Region',     prop.region],
-          ].map(([label, val]) => val ? (
-            <div key={label}>
-              <div style={{ fontSize: 9, color: T.textDim, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: T.text, marginTop: 1 }}>{val}</div>
-            </div>
-          ) : null)}
-        </div>
-      )}
-
-      {/* Missing months */}
-      {missingMonths.length > 0 && (
-        <div style={{ background: T.cardAlt, border: `1px solid ${T.amberDim}`, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: T.amber, marginBottom: 6 }}>
-            Missing statements — {missingMonths.length} month{missingMonths.length > 1 ? 's' : ''} in the past year
+      {/* Sticky summary */}
+      <div style={{ position: 'sticky', top: 0, background: T.bg, zIndex: 10, padding: '20px 28px 16px', borderBottom: `1px solid ${T.border}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: entries.length > 0 ? 16 : 0 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 20, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Buildings size={20} weight="fill" /> Municipal Account
+            </h2>
+            <div style={{ fontSize: 12, color: T.textDim, marginTop: 3 }}>Water • Rates • Refuse • Sewerage</div>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {missingMonths.map(m => (
-              <span key={m} onClick={() => { setForm({ ...EMPTY_FORM, month: m }); setShowForm(true) }}
-                style={{ fontSize: 11, color: T.amber, background: `${T.amber}18`, border: `1px solid ${T.amberDim}`, borderRadius: 5, padding: '3px 8px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}>
-                {m}
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <input ref={fileRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handlePDF} />
+            <button onClick={() => fileRef.current?.click()} disabled={pdfState === 'parsing'}
+              style={{ background: T.cardAlt, color: T.cyan, border: `1px solid ${T.cyanDim}`, borderRadius: 7, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: pdfState === 'parsing' ? 0.6 : 1 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {pdfState === 'parsing' ? <><CircleNotch size={14} style={{ animation: 'spin 1s linear infinite' }} /> Reading PDF…</> : <><FilePdf size={14} /> Upload PDF</>}
               </span>
-            ))}
+            </button>
+            <button onClick={() => { setShowForm(!showForm); setForm(EMPTY_FORM) }}
+              style={{ background: showForm ? T.border : T.cyan, color: showForm ? T.text : T.bg, border: 'none', borderRadius: 7, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              {showForm ? 'Cancel' : '+ Add Month'}
+            </button>
           </div>
-          <div style={{ fontSize: 10, color: T.textDim, marginTop: 6 }}>Click a month to add it, or upload its PDF above.</div>
         </div>
-      )}
 
-      {/* PDF error */}
-      {pdfState === 'error' && (
-        <div style={{ background: T.redDim, border: `1px solid ${T.red}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12, color: T.red }}>
-          PDF parse error: {pdfError}
-        </div>
-      )}
-
-      {/* Add/edit form */}
-      {showForm && (
-        <div style={{ background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-            <FormField label="Month"><input type="month" value={form.month} onChange={f('month')} style={inp} /></FormField>
-            <FormField label="Previous Account Balance (R)"><input type="number" value={form.previousBalance} onChange={f('previousBalance')} style={inp} /></FormField>
-          </div>
-
-          <div style={{ fontSize: 10, color: T.cyan, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Water & Sanitation</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-            {[['Water & Sanitation (R)','water'],['Sewerage (R)','sewerage'],['kL Used','waterKL'],['Daily Avg kL','waterDailyAvgKL'],['Reading Days','readingDays']].map(([l,k]) => (
-              <FormField key={k} label={l}><input type="number" value={form[k]} onChange={f(k)} style={inp} /></FormField>
-            ))}
-          </div>
-
-          <div style={{ fontSize: 10, color: T.textDim, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Fixed Charges</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-            {[['Rates (R)','rates'],['Refuse (R)','refuse'],['Other (R)','other']].map(([l,k]) => (
-              <FormField key={k} label={l}><input type="number" value={form[k]} onChange={f(k)} style={inp} /></FormField>
-            ))}
-          </div>
-
-          <div style={{ fontSize: 10, color: T.textDim, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Property Details</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
-            {[['Stand Size (m²)','standSize'],['Portion','portion'],['Valuation (R)','valuation'],['Region','region']].map(([l,k]) => (
-              <FormField key={k} label={l}>
-                <input type={['standSize','valuation'].includes(k) ? 'number' : 'text'} value={form[k]} onChange={f(k)} style={inp} />
-              </FormField>
-            ))}
-          </div>
-
-          <button onClick={handleSubmit} style={{ background: T.cyan, color: T.bg, border: 'none', borderRadius: 7, padding: '8px 24px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
-        </div>
-      )}
-
-      {entries.length === 0 ? (
-        <Empty title="No municipal data yet" desc="Upload a COJ municipal PDF to auto-extract data, or add months manually." fields={['Water & sewer charges', 'Property rates', 'Refuse removal']} onAction={() => setShowForm(true)} />
-      ) : (
-        <>
-          {/* Latest month stats */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        {entries.length > 0 && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {latest.previous_balance != null && (
               <Stat label="Prev Balance" value={Number(latest.previous_balance).toLocaleString()} prefix="R"
                 color={Number(latest.previous_balance) < 0 ? T.green : Number(latest.previous_balance) > 0 ? T.amber : T.textMuted}
@@ -235,23 +156,105 @@ export default function MunicipalPage() {
             <Stat label="Rates" value={Number(latest.rates).toLocaleString()} prefix="R" />
             <Stat label="Refuse" value={Number(latest.refuse).toLocaleString()} prefix="R" />
           </div>
+        )}
+      </div>
 
-          {/* History table */}
+      {/* Scrollable body */}
+      <div style={{ padding: '16px 28px' }}>
+        {/* Property info strip */}
+        {prop && (
+          <div style={{ display: 'flex', gap: 20, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: '10px 16px', marginBottom: 12, flexWrap: 'wrap' }}>
+            {[['Stand Size', prop.stand_size ? `${Number(prop.stand_size).toLocaleString()} m²` : null],
+              ['Portion',    prop.portion],
+              ['Valuation',  prop.valuation ? `R${Number(prop.valuation).toLocaleString()}` : null],
+              ['Region',     prop.region],
+            ].map(([label, val]) => val ? (
+              <div key={label}>
+                <div style={{ fontSize: 10, color: T.textDim, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginTop: 1 }}>{val}</div>
+              </div>
+            ) : null)}
+          </div>
+        )}
+
+        {/* Missing months */}
+        {missingMonths.length > 0 && (
+          <div style={{ background: T.cardAlt, border: `1px solid ${T.amberDim}`, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: T.amber, marginBottom: 6 }}>
+              Missing statements — {missingMonths.length} month{missingMonths.length > 1 ? 's' : ''} in the past year
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {missingMonths.map(m => (
+                <span key={m} onClick={() => { setForm({ ...EMPTY_FORM, month: m }); setShowForm(true) }}
+                  style={{ fontSize: 12, color: T.amber, background: `${T.amber}18`, border: `1px solid ${T.amberDim}`, borderRadius: 5, padding: '3px 8px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}>
+                  {m}
+                </span>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: T.textDim, marginTop: 6 }}>Click a month to add it, or upload its PDF above.</div>
+          </div>
+        )}
+
+        {/* PDF error */}
+        {pdfState === 'error' && (
+          <div style={{ background: T.redDim, border: `1px solid ${T.red}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: T.red }}>
+            PDF parse error: {pdfError}
+          </div>
+        )}
+
+        {/* Add/edit form */}
+        {showForm && (
+          <div style={{ background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 10 }}>
+              <FormField label="Month"><input type="month" value={form.month} onChange={f('month')} style={inp} /></FormField>
+              <FormField label="Previous Account Balance (R)"><input type="number" value={form.previousBalance} onChange={f('previousBalance')} style={inp} /></FormField>
+            </div>
+
+            <div style={{ fontSize: 11, color: T.cyan, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Water & Sanitation</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, marginBottom: 10 }}>
+              {[['Water & Sanitation (R)','water'],['Sewerage (R)','sewerage'],['kL Used','waterKL'],['Daily Avg kL','waterDailyAvgKL'],['Reading Days','readingDays']].map(([l,k]) => (
+                <FormField key={k} label={l}><input type="number" value={form[k]} onChange={f(k)} style={inp} /></FormField>
+              ))}
+            </div>
+
+            <div style={{ fontSize: 11, color: T.textDim, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Fixed Charges</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, marginBottom: 10 }}>
+              {[['Rates (R)','rates'],['Refuse (R)','refuse'],['Other (R)','other']].map(([l,k]) => (
+                <FormField key={k} label={l}><input type="number" value={form[k]} onChange={f(k)} style={inp} /></FormField>
+              ))}
+            </div>
+
+            <div style={{ fontSize: 11, color: T.textDim, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Property Details</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, marginBottom: 12 }}>
+              {[['Stand Size (m²)','standSize'],['Portion','portion'],['Valuation (R)','valuation'],['Region','region']].map(([l,k]) => (
+                <FormField key={k} label={l}>
+                  <input type={['standSize','valuation'].includes(k) ? 'number' : 'text'} value={form[k]} onChange={f(k)} style={inp} />
+                </FormField>
+              ))}
+            </div>
+
+            <button onClick={handleSubmit} style={{ background: T.cyan, color: T.bg, border: 'none', borderRadius: 7, padding: '8px 24px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+          </div>
+        )}
+
+        {entries.length === 0 ? (
+          <Empty title="No municipal data yet" desc="Upload a COJ municipal PDF to auto-extract data, or add months manually." fields={['Water & sewer charges', 'Property rates', 'Refuse removal']} onAction={() => setShowForm(true)} />
+        ) : (
           <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16 }}>
             <SectionLabel>History ({entries.length} months)</SectionLabel>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   {/* Group row */}
                   <tr style={{ borderBottom: `1px solid ${T.border}20` }}>
-                    <th style={{ padding: '4px 6px' }} />
-                    <th colSpan={4} style={{ padding: '4px 6px', fontSize: 9, fontWeight: 600, color: T.cyan, textAlign: 'left', background: waterBg, borderLeft: waterBorder, borderTop: waterBorder, borderRight: waterBorder }}>
+                    <th style={{ padding: '4px 8px' }} />
+                    <th colSpan={4} style={{ padding: '4px 8px', fontSize: 10, fontWeight: 600, color: T.cyan, textAlign: 'left', background: waterBg, borderLeft: waterBorder, borderTop: waterBorder, borderRight: waterBorder }}>
                       WATER &amp; SANITATION
                     </th>
-                    <th colSpan={2} style={{ padding: '4px 6px', fontSize: 9, fontWeight: 600, color: T.textDim, textAlign: 'left' }}>
+                    <th colSpan={2} style={{ padding: '4px 8px', fontSize: 10, fontWeight: 600, color: T.textDim, textAlign: 'left' }}>
                       FIXED
                     </th>
-                    <th colSpan={3} style={{ padding: '4px 6px' }} />
+                    <th colSpan={3} style={{ padding: '4px 8px' }} />
                   </tr>
                   {/* Column row */}
                   <tr style={{ borderBottom: `1px solid ${T.border}` }}>
@@ -265,6 +268,7 @@ export default function MunicipalPage() {
                     <TH>Current</TH>
                     <TH>Prev Bal</TH>
                     <TH>Total Due</TH>
+                    <TH></TH>
                   </tr>
                 </thead>
                 <tbody>
@@ -285,6 +289,9 @@ export default function MunicipalPage() {
                           {prevBal != null ? fmt(prevBal) : '—'}
                         </TD>
                         <TD style={{ color: T.cyan, fontWeight: 600 }}>{fmt(e.total)}</TD>
+                        <TD style={{ textAlign: 'right' }}>
+                          <span onClick={() => remove(e.id)} style={{ cursor: 'pointer', color: T.red, fontSize: 12 }}>×</span>
+                        </TD>
                       </tr>
                     )
                   })}
@@ -292,8 +299,8 @@ export default function MunicipalPage() {
               </table>
             </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   )
 }

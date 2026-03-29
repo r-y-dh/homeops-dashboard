@@ -13,37 +13,39 @@ export default function ConfigPage({ category, title, icon, subtitle, fields, em
 
   if (loading) return <div style={{ color: T.textMuted, padding: 40 }}>Loading…</div>
 
+  const Icon = icon
+
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+    <div style={{ padding: '20px 28px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 17, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {icon && (() => { const Icon = icon; return <Icon size={18} weight="fill" /> })()}
+          <h2 style={{ margin: 0, fontSize: 20, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {Icon && <Icon size={20} weight="fill" />}
             {title}
           </h2>
-          <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>{subtitle}</div>
+          <div style={{ fontSize: 12, color: T.textDim, marginTop: 3 }}>{subtitle}</div>
         </div>
-        {data && !editing && <button onClick={startEdit} style={{ background: T.border, color: T.text, border: 'none', borderRadius: 7, padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Edit</button>}
+        {data && !editing && <button onClick={startEdit} style={{ background: T.border, color: T.text, border: 'none', borderRadius: 7, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Edit</button>}
       </div>
 
       {!data && !editing ? (
         <Empty title={`No ${title.toLowerCase()} data yet`} desc={emptyDesc} fields={fields.map(f => f.label)} onAction={startEdit} />
       ) : editing ? (
         <div style={{ background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
             {fields.map(f => <FormField key={f.key} label={f.label}><input type={f.type||'text'} placeholder={f.placeholder||''} value={form[f.key]||''} onChange={e => setForm({...form, [f.key]: e.target.value})} style={inp} /></FormField>)}
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <button onClick={doSave} style={{ background: T.cyan, color: T.bg, border: 'none', borderRadius: 7, padding: '8px 24px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
-            <button onClick={() => setEditing(false)} style={{ background: T.border, color: T.text, border: 'none', borderRadius: 7, padding: '8px 24px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={doSave} style={{ background: T.cyan, color: T.bg, border: 'none', borderRadius: 7, padding: '8px 24px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+            <button onClick={() => setEditing(false)} style={{ background: T.border, color: T.text, border: 'none', borderRadius: 7, padding: '8px 24px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
           {fields.map(f => (
             <div key={f.key} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16 }}>
-              <div style={{ fontSize: 10, color: T.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>{f.label}</div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: f.color || T.text, fontFamily: "'JetBrains Mono', monospace" }}>{data[f.key] ? (f.prefix||'') + data[f.key] : '—'}</div>
+              <div style={{ fontSize: 11, color: T.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{f.label}</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: f.color || T.text, fontFamily: "'JetBrains Mono', monospace" }}>{data[f.key] ? (f.prefix||'') + data[f.key] : '—'}</div>
             </div>
           ))}
         </div>
