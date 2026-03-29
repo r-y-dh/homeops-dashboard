@@ -5,7 +5,11 @@ import { useMunicipal } from '../lib/hooks'
 import { supabase } from '../lib/supabase'
 import { Stat, FormField, SectionLabel, Empty, inp } from '../components/UI'
 
-const EMPTY_FORM = { month: '', water: '', rates: '', refuse: '', sewerage: '', other: '', waterKL: '', waterDailyAvgKL: '', readingDays: '', meterStart: '', meterEnd: '' }
+const EMPTY_FORM = {
+  month: '', water: '', rates: '', refuse: '', sewerage: '', other: '',
+  previousBalance: '', waterKL: '', waterDailyAvgKL: '', readingDays: '',
+  meterStart: '', meterEnd: '', standSize: '', portion: '', valuation: '', region: '',
+}
 
 async function parsePDF(file) {
   const arrayBuffer = await file.arrayBuffer()
@@ -17,10 +21,7 @@ async function parsePDF(file) {
   const { data: { session } } = await supabase.auth.getSession()
   const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-municipal-pdf`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
     body: JSON.stringify({ pdf_base64: base64 }),
   })
   if (!res.ok) {
@@ -30,11 +31,23 @@ async function parsePDF(file) {
   return res.json()
 }
 
+const fmt = (v) => v != null && v !== '' ? `R${Number(v).toLocaleString()}` : '—'
+const fmtN = (v) => v != null && v !== '' ? Number(v).toLocaleString() : '—'
+
+// Table header cell
+const TH = ({ children, style = {} }) => (
+  <th style={{ textAlign: 'left', padding: '5px 6px', color: T.textDim, fontWeight: 500, fontSize: 9, textTransform: 'uppercase', whiteSpace: 'nowrap', ...style }}>{children}</th>
+)
+// Table data cell
+const TD = ({ children, style = {} }) => (
+  <td style={{ padding: '5px 6px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, ...style }}>{children}</td>
+)
+
 export default function MunicipalPage() {
   const { entries, loading, add, remove } = useMunicipal()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [pdfState, setPdfState] = useState('idle') // idle | parsing | error
+  const [pdfState, setPdfState] = useState('idle')
   const [pdfError, setPdfError] = useState('')
   const fileRef = useRef()
 
@@ -46,17 +59,22 @@ export default function MunicipalPage() {
     try {
       const data = await parsePDF(file)
       setForm({
-        month: data.month ?? '',
-        water: data.water ?? '',
-        rates: data.rates ?? '',
-        refuse: data.refuse ?? '',
-        sewerage: data.sewerage ?? '',
-        other: data.other ?? '',
-        waterKL: data.water_kl ?? '',
+        month:           data.month           ?? '',
+        water:           data.water           ?? '',
+        rates:           data.rates           ?? '',
+        refuse:          data.refuse          ?? '',
+        sewerage:        data.sewerage        ?? '',
+        other:           data.other           ?? '',
+        previousBalance: data.previous_balance ?? '',
+        waterKL:         data.water_kl        ?? '',
         waterDailyAvgKL: data.water_daily_avg_kl ?? '',
-        readingDays: data.reading_days ?? '',
-        meterStart: data.meter_start ?? '',
-        meterEnd: data.meter_end ?? '',
+        readingDays:     data.reading_days    ?? '',
+        meterStart:      data.meter_start     ?? '',
+        meterEnd:        data.meter_end       ?? '',
+        standSize:       data.stand_size      ?? '',
+        portion:         data.portion         ?? '',
+        valuation:       data.valuation       ?? '',
+        region:          data.region          ?? '',
       })
       setShowForm(true)
       setPdfState('idle')
@@ -74,10 +92,15 @@ export default function MunicipalPage() {
     setShowForm(false)
   }
 
+  const f = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+
   if (loading) return <div style={{ color: T.textMuted, padding: 40 }}>Loading…</div>
   const latest = entries.length ? entries[entries.length - 1] : null
 
-  // Missing months in the past 12 months
+  // Property info from latest entry that has it
+  const prop = [...entries].reverse().find(e => e.stand_size || e.region || e.valuation)
+
+  // Missing months in past 12 months
   const missingMonths = (() => {
     const now = new Date()
     const present = new Set(entries.map(e => e.month))
@@ -90,33 +113,52 @@ export default function MunicipalPage() {
     return missing
   })()
 
+  // Water bg tint for table grouping
+  const waterBg = 'rgba(34,211,238,0.04)'
+  const waterBorder = `1px solid ${T.cyanDim}30`
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 17, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}><Buildings size={18} weight="fill" /> Municipal Account</h2>
+          <h2 style={{ margin: 0, fontSize: 17, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Buildings size={18} weight="fill" /> Municipal Account
+          </h2>
           <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>Water • Rates • Refuse • Sewerage</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input ref={fileRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handlePDF} />
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={pdfState === 'parsing'}
-            style={{ background: T.cardAlt, color: T.cyan, border: `1px solid ${T.cyanDim}`, borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: pdfState === 'parsing' ? 0.6 : 1 }}
-          >
+          <button onClick={() => fileRef.current?.click()} disabled={pdfState === 'parsing'}
+            style={{ background: T.cardAlt, color: T.cyan, border: `1px solid ${T.cyanDim}`, borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: pdfState === 'parsing' ? 0.6 : 1 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {pdfState === 'parsing' ? <><CircleNotch size={14} style={{ animation: 'spin 1s linear infinite' }} /> Reading PDF…</> : <><FilePdf size={14} /> Upload PDF</>}
             </span>
           </button>
-          <button
-            onClick={() => { setShowForm(!showForm); setForm(EMPTY_FORM) }}
-            style={{ background: showForm ? T.border : T.cyan, color: showForm ? T.text : T.bg, border: 'none', borderRadius: 7, padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-          >
+          <button onClick={() => { setShowForm(!showForm); setForm(EMPTY_FORM) }}
+            style={{ background: showForm ? T.border : T.cyan, color: showForm ? T.text : T.bg, border: 'none', borderRadius: 7, padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             {showForm ? 'Cancel' : '+ Add Month'}
           </button>
         </div>
       </div>
 
+      {/* Property info strip */}
+      {prop && (
+        <div style={{ display: 'flex', gap: 20, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: '8px 14px', marginBottom: 12, flexWrap: 'wrap' }}>
+          {[['Stand Size', prop.stand_size ? `${Number(prop.stand_size).toLocaleString()} m²` : null],
+            ['Portion',    prop.portion],
+            ['Valuation',  prop.valuation ? `R${Number(prop.valuation).toLocaleString()}` : null],
+            ['Region',     prop.region],
+          ].map(([label, val]) => val ? (
+            <div key={label}>
+              <div style={{ fontSize: 9, color: T.textDim, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: T.text, marginTop: 1 }}>{val}</div>
+            </div>
+          ) : null)}
+        </div>
+      )}
+
+      {/* Missing months */}
       {missingMonths.length > 0 && (
         <div style={{ background: T.cardAlt, border: `1px solid ${T.amberDim}`, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: T.amber, marginBottom: 6 }}>
@@ -124,11 +166,8 @@ export default function MunicipalPage() {
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {missingMonths.map(m => (
-              <span
-                key={m}
-                onClick={() => { setForm({ ...EMPTY_FORM, month: m }); setShowForm(true) }}
-                style={{ fontSize: 11, color: T.amber, background: `${T.amber}18`, border: `1px solid ${T.amberDim}`, borderRadius: 5, padding: '3px 8px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}
-              >
+              <span key={m} onClick={() => { setForm({ ...EMPTY_FORM, month: m }); setShowForm(true) }}
+                style={{ fontSize: 11, color: T.amber, background: `${T.amber}18`, border: `1px solid ${T.amberDim}`, borderRadius: 5, padding: '3px 8px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}>
                 {m}
               </span>
             ))}
@@ -137,29 +176,45 @@ export default function MunicipalPage() {
         </div>
       )}
 
+      {/* PDF error */}
       {pdfState === 'error' && (
         <div style={{ background: T.redDim, border: `1px solid ${T.red}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12, color: T.red }}>
           PDF parse error: {pdfError}
         </div>
       )}
 
+      {/* Add/edit form */}
       {showForm && (
         <div style={{ background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
-          <FormField label="Month"><input type="month" value={form.month} onChange={e => setForm({...form, month: e.target.value})} style={inp} /></FormField>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-            {[['Water & Sewer','water'],['Rates','rates'],['Refuse','refuse'],['Sewerage (extra)','sewerage'],['Other','other']].map(([l,k]) => (
-              <FormField key={k} label={`${l} (R)`}><input type="number" value={form[k]} onChange={e => setForm({...form, [k]: e.target.value})} style={inp} /></FormField>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <FormField label="Month"><input type="month" value={form.month} onChange={f('month')} style={inp} /></FormField>
+            <FormField label="Previous Account Balance (R)"><input type="number" value={form.previousBalance} onChange={f('previousBalance')} style={inp} /></FormField>
+          </div>
+
+          <div style={{ fontSize: 10, color: T.cyan, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Water & Sanitation</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+            {[['Water & Sanitation (R)','water'],['Sewerage (R)','sewerage'],['kL Used','waterKL'],['Daily Avg kL','waterDailyAvgKL'],['Reading Days','readingDays']].map(([l,k]) => (
+              <FormField key={k} label={l}><input type="number" value={form[k]} onChange={f(k)} style={inp} /></FormField>
             ))}
           </div>
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}` }}>
-            <div style={{ fontSize: 10, color: T.textDim, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Water meter</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 10 }}>
-              {[['kL Used','waterKL'],['Daily Avg kL','waterDailyAvgKL'],['Reading Days','readingDays'],['Meter Start','meterStart'],['Meter End','meterEnd']].map(([l,k]) => (
-                <FormField key={k} label={l}><input type="number" value={form[k]} onChange={e => setForm({...form, [k]: e.target.value})} style={inp} /></FormField>
-              ))}
-            </div>
+
+          <div style={{ fontSize: 10, color: T.textDim, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Fixed Charges</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+            {[['Rates (R)','rates'],['Refuse (R)','refuse'],['Other (R)','other']].map(([l,k]) => (
+              <FormField key={k} label={l}><input type="number" value={form[k]} onChange={f(k)} style={inp} /></FormField>
+            ))}
           </div>
-          <button onClick={handleSubmit} style={{ marginTop: 12, background: T.cyan, color: T.bg, border: 'none', borderRadius: 7, padding: '8px 24px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+
+          <div style={{ fontSize: 10, color: T.textDim, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Property Details</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+            {[['Stand Size (m²)','standSize'],['Portion','portion'],['Valuation (R)','valuation'],['Region','region']].map(([l,k]) => (
+              <FormField key={k} label={l}>
+                <input type={['standSize','valuation'].includes(k) ? 'number' : 'text'} value={form[k]} onChange={f(k)} style={inp} />
+              </FormField>
+            ))}
+          </div>
+
+          <button onClick={handleSubmit} style={{ background: T.cyan, color: T.bg, border: 'none', borderRadius: 7, padding: '8px 24px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
         </div>
       )}
 
@@ -167,30 +222,73 @@ export default function MunicipalPage() {
         <Empty title="No municipal data yet" desc="Upload a COJ municipal PDF to auto-extract data, or add months manually." fields={['Water & sewer charges', 'Property rates', 'Refuse removal']} onAction={() => setShowForm(true)} />
       ) : (
         <>
+          {/* Latest month stats */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-            <Stat label="Latest Total" value={Number(latest.total).toLocaleString()} prefix="R" sub={latest.month} color={T.cyan} />
-            <Stat label="Water & Sewer" value={Number(latest.water).toLocaleString()} prefix="R" />
+            {latest.previous_balance != null && (
+              <Stat label="Prev Balance" value={Number(latest.previous_balance).toLocaleString()} prefix="R"
+                color={Number(latest.previous_balance) < 0 ? T.green : Number(latest.previous_balance) > 0 ? T.amber : T.textMuted}
+                sub={latest.month} />
+            )}
+            <Stat label="Current Charges" value={Number(latest.current_charges ?? (Number(latest.rates||0)+Number(latest.water||0)+Number(latest.refuse||0)+Number(latest.sewerage||0)+Number(latest.other||0))).toLocaleString()} prefix="R" sub="This period" />
+            <Stat label="Total Due" value={Number(latest.total).toLocaleString()} prefix="R" color={T.cyan} sub={latest.month} />
+            <Stat label="Water & Sewer" value={Number(latest.water).toLocaleString()} prefix="R" color={T.cyan} />
             <Stat label="Rates" value={Number(latest.rates).toLocaleString()} prefix="R" />
             <Stat label="Refuse" value={Number(latest.refuse).toLocaleString()} prefix="R" />
           </div>
+
+          {/* History table */}
           <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16 }}>
             <SectionLabel>History ({entries.length} months)</SectionLabel>
-            <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+            <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                <thead><tr style={{ borderBottom: `1px solid ${T.border}` }}>
-                  {['Month','Water','Rates','Refuse','kL','Daily Avg','Total'].map(h => <th key={h} style={{ textAlign: 'left', padding: '5px 6px', color: T.textDim, fontWeight: 500, fontSize: 9, textTransform: 'uppercase' }}>{h}</th>)}
-                </tr></thead>
-                <tbody>{[...entries].reverse().map(e => (
-                  <tr key={e.id} style={{ borderBottom: `1px solid ${T.border}15` }}>
-                    <td style={{ padding: '5px 6px', color: T.text, fontFamily: "'JetBrains Mono', monospace" }}>{e.month}</td>
-                    <td style={{ padding: '5px 6px', color: T.text, fontFamily: "'JetBrains Mono', monospace" }}>R{Number(e.water).toLocaleString()}</td>
-                    <td style={{ padding: '5px 6px', color: T.text, fontFamily: "'JetBrains Mono', monospace" }}>R{Number(e.rates).toLocaleString()}</td>
-                    <td style={{ padding: '5px 6px', color: T.text, fontFamily: "'JetBrains Mono', monospace" }}>R{Number(e.refuse).toLocaleString()}</td>
-                    <td style={{ padding: '5px 6px', color: T.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>{e.water_kl ?? '—'}</td>
-                    <td style={{ padding: '5px 6px', color: T.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>{e.water_daily_avg_kl ?? '—'}</td>
-                    <td style={{ padding: '5px 6px', color: T.cyan, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>R{Number(e.total).toLocaleString()}</td>
+                <thead>
+                  {/* Group row */}
+                  <tr style={{ borderBottom: `1px solid ${T.border}20` }}>
+                    <th style={{ padding: '4px 6px' }} />
+                    <th colSpan={4} style={{ padding: '4px 6px', fontSize: 9, fontWeight: 600, color: T.cyan, textAlign: 'left', background: waterBg, borderLeft: waterBorder, borderTop: waterBorder, borderRight: waterBorder }}>
+                      WATER &amp; SANITATION
+                    </th>
+                    <th colSpan={2} style={{ padding: '4px 6px', fontSize: 9, fontWeight: 600, color: T.textDim, textAlign: 'left' }}>
+                      FIXED
+                    </th>
+                    <th colSpan={3} style={{ padding: '4px 6px' }} />
                   </tr>
-                ))}</tbody>
+                  {/* Column row */}
+                  <tr style={{ borderBottom: `1px solid ${T.border}` }}>
+                    <TH>Month</TH>
+                    <TH style={{ background: waterBg, borderLeft: waterBorder }}>Water</TH>
+                    <TH style={{ background: waterBg }}>Sewer</TH>
+                    <TH style={{ background: waterBg }}>kL</TH>
+                    <TH style={{ background: waterBg, borderRight: waterBorder }}>Daily Avg</TH>
+                    <TH>Rates</TH>
+                    <TH>Refuse</TH>
+                    <TH>Current</TH>
+                    <TH>Prev Bal</TH>
+                    <TH>Total Due</TH>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...entries].reverse().map(e => {
+                    const current = e.current_charges ?? (Number(e.rates||0)+Number(e.water||0)+Number(e.refuse||0)+Number(e.sewerage||0)+Number(e.other||0))
+                    const prevBal = e.previous_balance
+                    return (
+                      <tr key={e.id} style={{ borderBottom: `1px solid ${T.border}15` }}>
+                        <TD style={{ color: T.text }}>{e.month}</TD>
+                        <TD style={{ color: T.cyan, background: waterBg, borderLeft: waterBorder }}>{fmt(e.water)}</TD>
+                        <TD style={{ color: Number(e.sewerage) > 0 ? T.text : T.textDim, background: waterBg }}>{Number(e.sewerage) > 0 ? fmt(e.sewerage) : '—'}</TD>
+                        <TD style={{ color: T.textMuted, background: waterBg }}>{fmtN(e.water_kl)}</TD>
+                        <TD style={{ color: T.textMuted, background: waterBg, borderRight: waterBorder }}>{e.water_daily_avg_kl ? Number(e.water_daily_avg_kl).toFixed(3) : '—'}</TD>
+                        <TD style={{ color: T.text }}>{fmt(e.rates)}</TD>
+                        <TD style={{ color: T.text }}>{fmt(e.refuse)}</TD>
+                        <TD style={{ color: T.text }}>{fmt(current)}</TD>
+                        <TD style={{ color: prevBal == null ? T.textDim : Number(prevBal) < 0 ? T.green : Number(prevBal) > 0 ? T.amber : T.textMuted }}>
+                          {prevBal != null ? fmt(prevBal) : '—'}
+                        </TD>
+                        <TD style={{ color: T.cyan, fontWeight: 600 }}>{fmt(e.total)}</TD>
+                      </tr>
+                    )
+                  })}
+                </tbody>
               </table>
             </div>
           </div>

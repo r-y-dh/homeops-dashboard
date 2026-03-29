@@ -105,20 +105,29 @@ export function useMunicipal() {
 
   const add = async (entry) => {
     const { data: { user } } = await supabase.auth.getUser()
+    const rates    = parseFloat(entry.rates)    || 0
+    const water    = parseFloat(entry.water)    || 0
+    const refuse   = parseFloat(entry.refuse)   || 0
+    const sewerage = parseFloat(entry.sewerage) || 0
+    const other    = parseFloat(entry.other)    || 0
+    const currentCharges = rates + water + refuse + sewerage + other
+    const prevBal  = entry.previousBalance ? parseFloat(entry.previousBalance) : null
     const row = {
-      user_id: user.id,
-      month: entry.month,
-      rates: parseFloat(entry.rates) || 0,
-      water: parseFloat(entry.water) || 0,
-      refuse: parseFloat(entry.refuse) || 0,
-      sewerage: parseFloat(entry.sewerage) || 0,
-      other: parseFloat(entry.other) || 0,
-      total: (parseFloat(entry.rates) || 0) + (parseFloat(entry.water) || 0) +
-             (parseFloat(entry.refuse) || 0) + (parseFloat(entry.sewerage) || 0) +
-             (parseFloat(entry.other) || 0),
-      water_kl: entry.waterKL ? parseFloat(entry.waterKL) : null,
+      user_id:          user.id,
+      month:            entry.month,
+      rates, water, refuse, sewerage, other,
+      current_charges:  currentCharges,
+      total:            entry.total ? parseFloat(entry.total) : (prevBal != null ? prevBal + currentCharges : currentCharges),
+      previous_balance: prevBal,
+      water_kl:         entry.waterKL         ? parseFloat(entry.waterKL)         : null,
       water_daily_avg_kl: entry.waterDailyAvgKL ? parseFloat(entry.waterDailyAvgKL) : null,
-      reading_days: entry.readingDays ? parseInt(entry.readingDays) : null,
+      reading_days:     entry.readingDays      ? parseInt(entry.readingDays)       : null,
+      meter_start:      entry.meterStart       ? parseFloat(entry.meterStart)      : null,
+      meter_end:        entry.meterEnd         ? parseFloat(entry.meterEnd)        : null,
+      stand_size:       entry.standSize        || null,
+      portion:          entry.portion          || null,
+      valuation:        entry.valuation        ? parseFloat(entry.valuation)       : null,
+      region:           entry.region           || null,
     }
     const { error } = await supabase.from('municipal_entries').upsert(row, { onConflict: 'user_id,month' })
     if (!error) await fetch()
