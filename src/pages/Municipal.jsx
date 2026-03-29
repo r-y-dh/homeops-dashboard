@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react'
-import { Buildings, FilePdf, CircleNotch } from '@phosphor-icons/react'
+import { useState } from 'react'
+import { Buildings } from '@phosphor-icons/react'
 import { T } from '../lib/constants'
 import { useMunicipal } from '../lib/hooks'
 import { supabase } from '../lib/supabase'
 import { Stat, FormField, SectionLabel, Empty, inp } from '../components/UI'
+import AddFileDropdown from '../components/AddFileDropdown'
 
 const EMPTY_FORM = {
   month: '', water: '', rates: '', refuse: '', sewerage: '', other: '',
@@ -31,6 +32,26 @@ async function parsePDF(file) {
   return res.json()
 }
 
+async function parseImage(file) {
+  const arrayBuffer = await file.arrayBuffer()
+  const bytes = new Uint8Array(arrayBuffer)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+  const base64 = btoa(binary)
+
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+    body: JSON.stringify({ image_base64: base64, mime_type: file.type, context: 'municipal' }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || 'Failed to parse image')
+  }
+  return res.json()
+}
+
 const fmt = (v) => v != null && v !== '' ? `R${Number(v).toLocaleString()}` : '—'
 const fmtN = (v) => v != null && v !== '' ? Number(v).toLocaleString() : '—'
 
@@ -47,42 +68,47 @@ export default function MunicipalPage() {
   const { entries, loading, add, remove } = useMunicipal()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [pdfState, setPdfState] = useState('idle')
-  const [pdfError, setPdfError] = useState('')
-  const fileRef = useRef()
+  const [parseState, setParseState] = useState('idle')
+  const [parseError, setParseError] = useState('')
 
-  const handlePDF = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setPdfState('parsing')
-    setPdfError('')
+  const applyParsedData = (data) => {
+    setForm({
+      month:           data.month           ?? '',
+      water:           data.water           ?? '',
+      rates:           data.rates           ?? '',
+      refuse:          data.refuse          ?? '',
+      sewerage:        data.sewerage        ?? '',
+      other:           data.other           ?? '',
+      previousBalance: data.previous_balance ?? '',
+      waterKL:         data.water_kl        ?? '',
+      waterDailyAvgKL: data.water_daily_avg_kl ?? '',
+      readingDays:     data.reading_days    ?? '',
+      meterStart:      data.meter_start     ?? '',
+      meterEnd:        data.meter_end       ?? '',
+      standSize:       data.stand_size      ?? '',
+      portion:         data.portion         ?? '',
+      valuation:       data.valuation       ?? '',
+      region:          data.region          ?? '',
+    })
+    setShowForm(true)
+  }
+
+  const handleFile = async (file) => {
+    setParseState('parsing')
+    setParseError('')
     try {
-      const data = await parsePDF(file)
-      setForm({
-        month:           data.month           ?? '',
-        water:           data.water           ?? '',
-        rates:           data.rates           ?? '',
-        refuse:          data.refuse          ?? '',
-        sewerage:        data.sewerage        ?? '',
-        other:           data.other           ?? '',
-        previousBalance: data.previous_balance ?? '',
-        waterKL:         data.water_kl        ?? '',
-        waterDailyAvgKL: data.water_daily_avg_kl ?? '',
-        readingDays:     data.reading_days    ?? '',
-        meterStart:      data.meter_start     ?? '',
-        meterEnd:        data.meter_end       ?? '',
-        standSize:       data.stand_size      ?? '',
-        portion:         data.portion         ?? '',
-        valuation:       data.valuation       ?? '',
-        region:          data.region          ?? '',
-      })
-      setShowForm(true)
-      setPdfState('idle')
+      if (file.type === 'application/pdf') {
+        const data = await parsePDF(file)
+        applyParsedData(data)
+      } else {
+        const { data } = await parseImage(file)
+        applyParsedData(data)
+      }
+      setParseState('idle')
     } catch (err) {
-      setPdfError(err.message)
-      setPdfState('error')
+      setParseError(err.message)
+      setParseState('error')
     }
-    e.target.value = ''
   }
 
   const handleSubmit = async () => {
@@ -129,13 +155,12 @@ export default function MunicipalPage() {
             <div style={{ fontSize: 12, color: T.textDim, marginTop: 3 }}>Water • Rates • Refuse • Sewerage</div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <input ref={fileRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handlePDF} />
-            <button onClick={() => fileRef.current?.click()} disabled={pdfState === 'parsing'}
-              style={{ background: T.cardAlt, color: T.cyan, border: `1px solid ${T.cyanDim}`, borderRadius: 7, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: pdfState === 'parsing' ? 0.6 : 1 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {pdfState === 'parsing' ? <><CircleNotch size={14} style={{ animation: 'spin 1s linear infinite' }} /> Reading PDF…</> : <><FilePdf size={14} /> Upload PDF</>}
-              </span>
-            </button>
+            <AddFileDropdown
+              onFile={handleFile}
+              loading={parseState === 'parsing'}
+              label="Add file or photo"
+              accept="image/*,application/pdf"
+            />
             <button onClick={() => { setShowForm(!showForm); setForm(EMPTY_FORM) }}
               style={{ background: showForm ? T.border : T.cyan, color: showForm ? T.text : T.bg, border: 'none', borderRadius: 7, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               {showForm ? 'Cancel' : '+ Add Month'}
@@ -191,14 +216,14 @@ export default function MunicipalPage() {
                 </span>
               ))}
             </div>
-            <div style={{ fontSize: 11, color: T.textDim, marginTop: 6 }}>Click a month to add it, or upload its PDF above.</div>
+            <div style={{ fontSize: 11, color: T.textDim, marginTop: 6 }}>Click a month to add it, or upload a PDF/photo above.</div>
           </div>
         )}
 
-        {/* PDF error */}
-        {pdfState === 'error' && (
+        {/* Parse error */}
+        {parseState === 'error' && (
           <div style={{ background: T.redDim, border: `1px solid ${T.red}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: T.red }}>
-            PDF parse error: {pdfError}
+            Parse error: {parseError}
           </div>
         )}
 
@@ -238,7 +263,7 @@ export default function MunicipalPage() {
         )}
 
         {entries.length === 0 ? (
-          <Empty title="No municipal data yet" desc="Upload a COJ municipal PDF to auto-extract data, or add months manually." fields={['Water & sewer charges', 'Property rates', 'Refuse removal']} onAction={() => setShowForm(true)} />
+          <Empty title="No municipal data yet" desc="Upload a PDF or photo of your municipal statement to auto-extract data, or add months manually." fields={['Water & sewer charges', 'Property rates', 'Refuse removal']} onAction={() => setShowForm(true)} />
         ) : (
           <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16 }}>
             <SectionLabel>History ({entries.length} months)</SectionLabel>

@@ -2,14 +2,53 @@ import { useState } from 'react'
 import { Lightning } from '@phosphor-icons/react'
 import { T, WINTER_TARGETS, DAILY_USAGE_NORMAL, DAILY_USAGE_WINTER } from '../lib/constants'
 import { useElectricity } from '../lib/hooks'
+import { supabase } from '../lib/supabase'
 import { Stat, FormField, SectionLabel, Empty, inp } from '../components/UI'
 import BufferGauge from '../components/BufferGauge'
+import AddFileDropdown from '../components/AddFileDropdown'
 
 export default function ElectricityPage() {
   const { entries, loading, add, update, remove } = useElectricity()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ date: '', amount: '', units: '', balance: '', serviceFee: '200' })
   const [editId, setEditId] = useState(null)
+  const [parseState, setParseState] = useState('idle')
+  const [parseError, setParseError] = useState('')
+
+  const handleFile = async (file) => {
+    setParseState('parsing')
+    setParseError('')
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      const bytes = new Uint8Array(arrayBuffer)
+      let binary = ''
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+      const base64 = btoa(binary)
+
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ image_base64: base64, mime_type: file.type, context: 'electricity_topup' }),
+      })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to parse')
+      const result = await res.json()
+      const d = result.data || result
+      setForm({
+        date:       d.date       || new Date().toISOString().slice(0, 10),
+        amount:     d.amount     != null ? String(d.amount)      : '',
+        serviceFee: d.service_fee != null ? String(d.service_fee) : '200',
+        units:      d.units      != null ? String(d.units)       : '',
+        balance:    '',
+      })
+      setEditId(null)
+      setShowForm(true)
+      setParseState('idle')
+    } catch (err) {
+      setParseError(err.message)
+      setParseState('error')
+    }
+  }
 
   const handleSubmit = async () => {
     if (!form.date || !form.amount) return
@@ -66,10 +105,18 @@ export default function ElectricityPage() {
             </h2>
             <div style={{ fontSize: 12, color: T.textDim, marginTop: 3 }}>City Power Johannesburg • Prepaid • Meter #14288734024</div>
           </div>
-          <button onClick={() => { setShowForm(!showForm); setEditId(null); setForm({ date: '', amount: '', units: '', balance: '', serviceFee: '200' }) }} style={{
-            background: showForm ? T.border : T.cyan, color: showForm ? T.text : T.bg,
-            border: 'none', borderRadius: 7, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}>{showForm ? 'Cancel' : '+ Log Top-up'}</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <AddFileDropdown
+              onFile={handleFile}
+              loading={parseState === 'parsing'}
+              label="Add file or photo"
+              accept="image/*"
+            />
+            <button onClick={() => { setShowForm(!showForm); setEditId(null); setForm({ date: '', amount: '', units: '', balance: '', serviceFee: '200' }) }} style={{
+              background: showForm ? T.border : T.cyan, color: showForm ? T.text : T.bg,
+              border: 'none', borderRadius: 7, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>{showForm ? 'Cancel' : '+ Log Top-up'}</button>
+          </div>
         </div>
 
         {entries.length > 0 && (
@@ -84,6 +131,11 @@ export default function ElectricityPage() {
 
       {/* Scrollable body */}
       <div style={{ padding: '20px 28px' }}>
+        {parseState === 'error' && (
+          <div style={{ background: T.redDim, border: `1px solid ${T.red}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: T.red }}>
+            Parse error: {parseError}
+          </div>
+        )}
         {showForm && (
           <div style={{ background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>

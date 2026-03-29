@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { SquaresFour } from '@phosphor-icons/react'
 import { T } from '../lib/constants'
 import { useElectricity, useMunicipal, useHouseholdConfig } from '../lib/hooks'
+import { supabase } from '../lib/supabase'
 import { Stat, SectionLabel } from '../components/UI'
 import BufferGauge from '../components/BufferGauge'
+import AddFileDropdown from '../components/AddFileDropdown'
 
 export default function OverviewPage() {
   const { entries: elec, loading: l1 } = useElectricity()
@@ -13,6 +15,70 @@ export default function OverviewPage() {
   const { data: insurance, loading: l5 } = useHouseholdConfig('insurance')
 
   const loading = l1 || l2 || l3 || l4 || l5
+  const [uploadState, setUploadState] = useState('idle') // idle | parsing | success | error
+  const [uploadMsg, setUploadMsg]   = useState('')
+
+  const handleFile = async (file) => {
+    setUploadState('parsing')
+    setUploadMsg('')
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      const bytes = new Uint8Array(arrayBuffer)
+      let binary = ''
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+      const base64 = btoa(binary)
+
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ image_base64: base64, mime_type: file.type }),
+      })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to parse')
+      const result = await res.json()
+      const d = result.data || result
+
+      if (result.type === 'electricity_topup') {
+        const { error } = await elec.add({
+          date:       d.date || new Date().toISOString().slice(0, 10),
+          amount:     d.amount     ?? 0,
+          serviceFee: d.service_fee ?? 200,
+          units:      d.units      ?? 0,
+          balance:    '',
+        })
+        if (error) throw new Error(error.message)
+        setUploadMsg('Electricity top-up saved.')
+      } else if (result.type === 'municipal' || result.type === 'dab_dashboard') {
+        const waterKl = result.type === 'dab_dashboard' ? d.water_kl : d.water_kl
+        const { error } = await muni.add({
+          month:           d.month || d.current_month || '',
+          water:           d.water           ?? 0,
+          rates:           d.rates           ?? 0,
+          refuse:          d.refuse          ?? 0,
+          sewerage:        d.sewerage        ?? 0,
+          other:           d.other           ?? 0,
+          previousBalance: d.previous_balance ?? '',
+          waterKL:         waterKl            ?? '',
+          waterDailyAvgKL: d.water_daily_avg_kl ?? '',
+          readingDays:     d.reading_days    ?? '',
+          meterStart:      '', meterEnd: '',
+          standSize: '', portion: '', valuation: '', region: '',
+        })
+        if (error) throw new Error(error.message)
+        setUploadMsg('Municipal data saved.')
+      } else {
+        setUploadMsg('Could not identify data type — try uploading on the specific page.')
+        setUploadState('error')
+        return
+      }
+      setUploadState('success')
+      setTimeout(() => setUploadState('idle'), 4000)
+    } catch (err) {
+      setUploadMsg(err.message)
+      setUploadState('error')
+    }
+  }
+
   if (loading) return <div style={{ color: T.textMuted, padding: 40 }}>Loading…</div>
 
   const now = new Date()
@@ -43,12 +109,30 @@ export default function OverviewPage() {
     <div>
       {/* Sticky summary */}
       <div style={{ position: 'sticky', top: 0, background: T.bg, zIndex: 10, padding: '20px 28px 16px', borderBottom: `1px solid ${T.border}` }}>
-        <div style={{ marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 20, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <SquaresFour size={20} weight="fill" /> Home OPS Command Centre
-          </h2>
-          <div style={{ fontSize: 12, color: T.textDim, marginTop: 3 }}>Riyadh Gordon • Johannesburg • {populated}/6 modules active</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 20, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <SquaresFour size={20} weight="fill" /> Home OPS Command Centre
+            </h2>
+            <div style={{ fontSize: 12, color: T.textDim, marginTop: 3 }}>Riyadh Gordon • Johannesburg • {populated}/6 modules active</div>
+          </div>
+          <AddFileDropdown
+            onFile={handleFile}
+            loading={uploadState === 'parsing'}
+            label="Add file or photo"
+            accept="image/*,application/pdf"
+          />
         </div>
+        {(uploadState === 'success' || uploadState === 'error') && (
+          <div style={{
+            marginBottom: 12, padding: '8px 14px', borderRadius: 8, fontSize: 13,
+            background: uploadState === 'success' ? `${T.green}18` : T.redDim,
+            border: `1px solid ${uploadState === 'success' ? T.green : T.red}`,
+            color: uploadState === 'success' ? T.green : T.red,
+          }}>
+            {uploadMsg}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Stat label="Total Monthly" value={totalMonthly > 0 ? totalMonthly.toLocaleString() : '—'} prefix="R" color={T.cyan} sub="Known costs only" />
