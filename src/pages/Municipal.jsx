@@ -1,17 +1,75 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { T } from '../lib/constants'
 import { useMunicipal } from '../lib/hooks'
+import { supabase } from '../lib/supabase'
 import { Stat, FormField, SectionLabel, Empty, inp } from '../components/UI'
+
+const EMPTY_FORM = { month: '', water: '', rates: '', refuse: '', sewerage: '', other: '', waterKL: '', waterDailyAvgKL: '', readingDays: '', meterStart: '', meterEnd: '' }
+
+async function parsePDF(file) {
+  const arrayBuffer = await file.arrayBuffer()
+  const bytes = new Uint8Array(arrayBuffer)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+  const base64 = btoa(binary)
+
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-municipal-pdf`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ pdf_base64: base64 }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || 'Failed to parse PDF')
+  }
+  return res.json()
+}
 
 export default function MunicipalPage() {
   const { entries, loading, add, remove } = useMunicipal()
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ month: '', water: '', rates: '', refuse: '', sewerage: '', other: '' })
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [pdfState, setPdfState] = useState('idle') // idle | parsing | error
+  const [pdfError, setPdfError] = useState('')
+  const fileRef = useRef()
+
+  const handlePDF = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPdfState('parsing')
+    setPdfError('')
+    try {
+      const data = await parsePDF(file)
+      setForm({
+        month: data.month ?? '',
+        water: data.water ?? '',
+        rates: data.rates ?? '',
+        refuse: data.refuse ?? '',
+        sewerage: data.sewerage ?? '',
+        other: data.other ?? '',
+        waterKL: data.water_kl ?? '',
+        waterDailyAvgKL: data.water_daily_avg_kl ?? '',
+        readingDays: data.reading_days ?? '',
+        meterStart: data.meter_start ?? '',
+        meterEnd: data.meter_end ?? '',
+      })
+      setShowForm(true)
+      setPdfState('idle')
+    } catch (err) {
+      setPdfError(err.message)
+      setPdfState('error')
+    }
+    e.target.value = ''
+  }
 
   const handleSubmit = async () => {
     if (!form.month) return
     await add(form)
-    setForm({ month: '', water: '', rates: '', refuse: '', sewerage: '', other: '' })
+    setForm(EMPTY_FORM)
     setShowForm(false)
   }
 
@@ -25,8 +83,29 @@ export default function MunicipalPage() {
           <h2 style={{ margin: 0, fontSize: 17, color: T.text }}>🏛 Municipal Account</h2>
           <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>Water • Rates • Refuse • Sewerage</div>
         </div>
-        <button onClick={() => setShowForm(!showForm)} style={{ background: showForm ? T.border : T.cyan, color: showForm ? T.text : T.bg, border: 'none', borderRadius: 7, padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{showForm ? 'Cancel' : '+ Add Month'}</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input ref={fileRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handlePDF} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={pdfState === 'parsing'}
+            style={{ background: T.cardAlt, color: T.cyan, border: `1px solid ${T.cyanDim}`, borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: pdfState === 'parsing' ? 0.6 : 1 }}
+          >
+            {pdfState === 'parsing' ? '⏳ Reading PDF…' : '📄 Upload PDF'}
+          </button>
+          <button
+            onClick={() => { setShowForm(!showForm); setForm(EMPTY_FORM) }}
+            style={{ background: showForm ? T.border : T.cyan, color: showForm ? T.text : T.bg, border: 'none', borderRadius: 7, padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+          >
+            {showForm ? 'Cancel' : '+ Add Month'}
+          </button>
+        </div>
       </div>
+
+      {pdfState === 'error' && (
+        <div style={{ background: T.redDim, border: `1px solid ${T.red}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12, color: T.red }}>
+          PDF parse error: {pdfError}
+        </div>
+      )}
 
       {showForm && (
         <div style={{ background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
@@ -36,12 +115,20 @@ export default function MunicipalPage() {
               <FormField key={k} label={`${l} (R)`}><input type="number" value={form[k]} onChange={e => setForm({...form, [k]: e.target.value})} style={inp} /></FormField>
             ))}
           </div>
-          <button onClick={handleSubmit} style={{ marginTop: 10, background: T.cyan, color: T.bg, border: 'none', borderRadius: 7, padding: '8px 24px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 10, color: T.textDim, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Water meter</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 10 }}>
+              {[['kL Used','waterKL'],['Daily Avg kL','waterDailyAvgKL'],['Reading Days','readingDays'],['Meter Start','meterStart'],['Meter End','meterEnd']].map(([l,k]) => (
+                <FormField key={k} label={l}><input type="number" value={form[k]} onChange={e => setForm({...form, [k]: e.target.value})} style={inp} /></FormField>
+              ))}
+            </div>
+          </div>
+          <button onClick={handleSubmit} style={{ marginTop: 12, background: T.cyan, color: T.bg, border: 'none', borderRadius: 7, padding: '8px 24px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
         </div>
       )}
 
       {entries.length === 0 ? (
-        <Empty title="No municipal data yet" desc="Upload municipal PDFs to Claude and I'll extract the data, or add months manually." fields={['Water & sewer charges', 'Property rates', 'Refuse removal']} onAction={() => setShowForm(true)} />
+        <Empty title="No municipal data yet" desc="Upload a COJ municipal PDF to auto-extract data, or add months manually." fields={['Water & sewer charges', 'Property rates', 'Refuse removal']} onAction={() => setShowForm(true)} />
       ) : (
         <>
           <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
