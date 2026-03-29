@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { Buildings, FilePdf, CircleNotch } from '@phosphor-icons/react'
 import { T } from '../lib/constants'
 import { useMunicipal } from '../lib/hooks'
 import { supabase } from '../lib/supabase'
@@ -80,7 +81,7 @@ export default function MunicipalPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 17, color: T.text }}>🏛 Municipal Account</h2>
+          <h2 style={{ margin: 0, fontSize: 17, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}><Buildings size={18} weight="fill" /> Municipal Account</h2>
           <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>Water • Rates • Refuse • Sewerage</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -90,7 +91,9 @@ export default function MunicipalPage() {
             disabled={pdfState === 'parsing'}
             style={{ background: T.cardAlt, color: T.cyan, border: `1px solid ${T.cyanDim}`, borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: pdfState === 'parsing' ? 0.6 : 1 }}
           >
-            {pdfState === 'parsing' ? '⏳ Reading PDF…' : '📄 Upload PDF'}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {pdfState === 'parsing' ? <><CircleNotch size={14} style={{ animation: 'spin 1s linear infinite' }} /> Reading PDF…</> : <><FilePdf size={14} /> Upload PDF</>}
+            </span>
           </button>
           <button
             onClick={() => { setShowForm(!showForm); setForm(EMPTY_FORM) }}

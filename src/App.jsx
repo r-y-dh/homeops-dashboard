@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { T, MODULES } from './lib/constants'
 import { useAuth } from './lib/hooks'
 import Login from './components/Login'
@@ -59,9 +60,9 @@ export default function App() {
       case 'overview': return <OverviewPage />
       case 'electricity': return <ElectricityPage />
       case 'municipal': return <MunicipalPage />
-      case 'bond': return <ConfigPage category="bond" title="Home Loan" icon="🏠" subtitle="Bond repayment & balance" fields={bondFields} emptyDesc="Add your home loan details to track repayments and remaining balance." />
-      case 'medical': return <ConfigPage category="medical" title="Medical Aid" icon="✚" subtitle="Provider, plan & premium" fields={medFields} emptyDesc="Add your medical aid details to track premiums and escalations." />
-      case 'insurance': return <ConfigPage category="insurance" title="Insurance" icon="🛡" subtitle="Home, contents & vehicle" fields={insFields} emptyDesc="Add your insurance policies to track total premium outflow." />
+      case 'bond': return <ConfigPage category="bond" title="Home Loan" icon={MODULES.find(m => m.id === 'bond').Icon} subtitle="Bond repayment & balance" fields={bondFields} emptyDesc="Add your home loan details to track repayments and remaining balance." />
+      case 'medical': return <ConfigPage category="medical" title="Medical Aid" icon={MODULES.find(m => m.id === 'medical').Icon} subtitle="Provider, plan & premium" fields={medFields} emptyDesc="Add your medical aid details to track premiums and escalations." />
+      case 'insurance': return <ConfigPage category="insurance" title="Insurance" icon={MODULES.find(m => m.id === 'insurance').Icon} subtitle="Home, contents & vehicle" fields={insFields} emptyDesc="Add your insurance policies to track total premium outflow." />
       case 'solar': return <SolarPlaceholder />
       default: return null
     }
@@ -74,7 +75,9 @@ export default function App() {
       <div style={{ width: sidebar ? 190 : 48, background: T.surface, borderRight: `1px solid ${T.border}`, padding: '14px 0', transition: 'width 0.2s', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '0 10px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: sidebar ? 'space-between' : 'center' }}>
           {sidebar && <span style={{ fontSize: 12, fontWeight: 700, color: T.cyan, letterSpacing: 2, textTransform: 'uppercase' }}>Home OPS</span>}
-          <span onClick={() => setSidebar(!sidebar)} style={{ cursor: 'pointer', color: T.textDim, fontSize: 14 }}>{sidebar ? '◂' : '▸'}</span>
+          <span onClick={() => setSidebar(!sidebar)} style={{ cursor: 'pointer', color: T.textDim, display: 'flex' }}>
+            {sidebar ? <CaretLeft size={16} /> : <CaretRight size={16} />}
+          </span>
         </div>
         {MODULES.map(m => (
           <div key={m.id} onClick={() => setTab(m.id)} style={{
@@ -86,7 +89,7 @@ export default function App() {
             color: tab === m.id ? T.cyan : T.textMuted,
             fontSize: 12, fontWeight: tab === m.id ? 600 : 400, transition: 'all 0.15s',
           }}>
-            <span style={{ fontSize: 14 }}>{m.icon}</span>
+            <m.Icon size={16} weight={tab === m.id ? 'fill' : 'regular'} />
             {sidebar && <span>{m.label}</span>}
           </div>
         ))}

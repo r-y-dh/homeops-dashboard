@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Lightning } from '@phosphor-icons/react'
 import { T, WINTER_TARGETS, DAILY_USAGE_NORMAL, DAILY_USAGE_WINTER } from '../lib/constants'
 import { useElectricity } from '../lib/hooks'
 import { Stat, FormField, SectionLabel, Empty, inp } from '../components/UI'
@@ -58,7 +59,7 @@ export default function ElectricityPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 17, color: T.text, fontWeight: 700 }}>⚡ Electricity Tracker</h2>
+          <h2 style={{ margin: 0, fontSize: 17, color: T.text, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><Lightning size={18} weight="fill" /> Electricity Tracker</h2>
           <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>City Power Johannesburg • Prepaid • Meter #14288734024</div>
         </div>
         <button onClick={() => { setShowForm(!showForm); setEditId(null); setForm({ date: '', amount: '', units: '', balance: '', serviceFee: '200' }) }} style={{

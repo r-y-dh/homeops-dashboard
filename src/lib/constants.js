@@ -20,14 +20,16 @@ export const T = {
   greenGlow: 'rgba(16,185,129,0.08)',
 }
 
+import { SquaresFour, Lightning, Buildings, House, FirstAidKit, ShieldCheck, Sun } from '@phosphor-icons/react'
+
 export const MODULES = [
-  { id: 'overview', label: 'Overview', icon: '◉' },
-  { id: 'electricity', label: 'Electricity', icon: '⚡' },
-  { id: 'municipal', label: 'Municipal', icon: '🏛' },
-  { id: 'bond', label: 'Bond', icon: '🏠' },
-  { id: 'medical', label: 'Medical Aid', icon: '✚' },
-  { id: 'insurance', label: 'Insurance', icon: '🛡' },
-  { id: 'solar', label: 'Solar', icon: '☀' },
+  { id: 'overview',     label: 'Overview',    Icon: SquaresFour },
+  { id: 'electricity',  label: 'Electricity',  Icon: Lightning   },
+  { id: 'municipal',    label: 'Municipal',    Icon: Buildings   },
+  { id: 'bond',         label: 'Bond',         Icon: House       },
+  { id: 'medical',      label: 'Medical Aid',  Icon: FirstAidKit },
+  { id: 'insurance',    label: 'Insurance',    Icon: ShieldCheck },
+  { id: 'solar',        label: 'Solar',        Icon: Sun         },
 ]
 
 export const WINTER_TARGETS = { min: 1200, comfortable: 1400, ideal: 1600 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { SquaresFour } from '@phosphor-icons/react'
 import { T } from '../lib/constants'
 import { useElectricity, useMunicipal, useHouseholdConfig } from '../lib/hooks'
 import { Stat, SectionLabel } from '../components/UI'
@@ -41,7 +42,7 @@ export default function OverviewPage() {
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ margin: 0, fontSize: 17, color: T.text }}>◉ Home OPS Command Centre</h2>
+        <h2 style={{ margin: 0, fontSize: 17, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}><SquaresFour size={18} weight="fill" /> Home OPS Command Centre</h2>
         <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>Riyadh Gordon • Johannesburg • {populated}/6 modules active</div>
       </div>
 

@@ -17,7 +17,10 @@ export default function ConfigPage({ category, title, icon, subtitle, fields, em
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 17, color: T.text }}>{icon} {title}</h2>
+          <h2 style={{ margin: 0, fontSize: 17, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {icon && (() => { const Icon = icon; return <Icon size={18} weight="fill" /> })()}
+            {title}
+          </h2>
           <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>{subtitle}</div>
         </div>
         {data && !editing && <button onClick={startEdit} style={{ background: T.border, color: T.text, border: 'none', borderRadius: 7, padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Edit</button>}
