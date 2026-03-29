@@ -1,0 +1,128 @@
+-- ============================================================
+-- Home OPS Database Schema
+-- Run this in Supabase SQL Editor (https://supabase.com/dashboard/project/YOUR_PROJECT/sql)
+-- ============================================================
+
+-- ─── Electricity Purchases ───────────────────────────────────
+create table electricity_purchases (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  date date not null,
+  amount numeric(10,2) not null,          -- Total Rands paid
+  service_fee numeric(10,2) default 200,  -- R200 City Power fee
+  energy_value numeric(10,2),             -- amount - service_fee
+  units numeric(10,2),                    -- kWh received
+  balance numeric(10,2),                  -- Meter balance after top-up (nullable)
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- ─── Meter Readings ──────────────────────────────────────────
+create table meter_readings (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  date date not null,
+  reading numeric(12,2) not null,         -- kWh on meter
+  source text default 'manual',           -- manual, photo, auto
+  notes text,
+  created_at timestamptz default now()
+);
+
+-- ─── Municipal Entries ───────────────────────────────────────
+create table municipal_entries (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  month text not null,                    -- YYYY-MM format
+  rates numeric(10,2) default 0,          -- Property rates (incl rebate)
+  water numeric(10,2) default 0,          -- Water & sanitation (incl sewer, levy, VAT)
+  refuse numeric(10,2) default 0,         -- Pikitup refuse (incl VAT)
+  sewerage numeric(10,2) default 0,       -- Separate sewer if broken out
+  other numeric(10,2) default 0,
+  total numeric(10,2),                    -- Sum of above
+  water_kl numeric(8,2),                  -- Kilolitres consumed
+  water_daily_avg_kl numeric(6,3),        -- Daily average KL
+  reading_days integer,                   -- Days in reading period
+  meter_start numeric(12,3),              -- Water meter start reading
+  meter_end numeric(12,3),                -- Water meter end reading
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(user_id, month)                  -- One entry per month per user
+);
+
+-- ─── Household Config (Bond, Medical, Insurance) ─────────────
+create table household_config (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  category text not null,                 -- 'bond', 'medical', 'insurance'
+  data jsonb not null default '{}',       -- Flexible key-value store
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(user_id, category)
+);
+
+-- ─── Row Level Security ──────────────────────────────────────
+-- Enable RLS on all tables
+alter table electricity_purchases enable row level security;
+alter table meter_readings enable row level security;
+alter table municipal_entries enable row level security;
+alter table household_config enable row level security;
+
+-- Policies: users can only access their own data
+create policy "Users can view own electricity purchases"
+  on electricity_purchases for select using (auth.uid() = user_id);
+create policy "Users can insert own electricity purchases"
+  on electricity_purchases for insert with check (auth.uid() = user_id);
+create policy "Users can update own electricity purchases"
+  on electricity_purchases for update using (auth.uid() = user_id);
+create policy "Users can delete own electricity purchases"
+  on electricity_purchases for delete using (auth.uid() = user_id);
+
+create policy "Users can view own meter readings"
+  on meter_readings for select using (auth.uid() = user_id);
+create policy "Users can insert own meter readings"
+  on meter_readings for insert with check (auth.uid() = user_id);
+create policy "Users can update own meter readings"
+  on meter_readings for update using (auth.uid() = user_id);
+create policy "Users can delete own meter readings"
+  on meter_readings for delete using (auth.uid() = user_id);
+
+create policy "Users can view own municipal entries"
+  on municipal_entries for select using (auth.uid() = user_id);
+create policy "Users can insert own municipal entries"
+  on municipal_entries for insert with check (auth.uid() = user_id);
+create policy "Users can update own municipal entries"
+  on municipal_entries for update using (auth.uid() = user_id);
+create policy "Users can delete own municipal entries"
+  on municipal_entries for delete using (auth.uid() = user_id);
+
+create policy "Users can view own household config"
+  on household_config for select using (auth.uid() = user_id);
+create policy "Users can insert own household config"
+  on household_config for insert with check (auth.uid() = user_id);
+create policy "Users can update own household config"
+  on household_config for update using (auth.uid() = user_id);
+create policy "Users can delete own household config"
+  on household_config for delete using (auth.uid() = user_id);
+
+-- ─── Updated_at trigger ──────────────────────────────────────
+create or replace function update_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger electricity_purchases_updated_at
+  before update on electricity_purchases
+  for each row execute function update_updated_at();
+
+create trigger municipal_entries_updated_at
+  before update on municipal_entries
+  for each row execute function update_updated_at();
+
+create trigger household_config_updated_at
+  before update on household_config
+  for each row execute function update_updated_at();
