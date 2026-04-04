@@ -143,6 +143,65 @@ export function useMunicipal() {
   return { entries, loading, add, remove, refresh: fetch }
 }
 
+// ─── Fuel ────────────────────────────────────────────────────
+export function useFuel() {
+  const [entries, setEntries] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetch = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('fuel_purchases')
+      .select('*')
+      .order('date', { ascending: true })
+    if (!error) setEntries(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { fetch() }, [fetch])
+
+  const add = async (entry) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    const litres = parseFloat(entry.litres)
+    const cost   = parseFloat(entry.cost)
+    const row = {
+      user_id:         user.id,
+      date:            entry.date,
+      litres,
+      cost,
+      price_per_litre: litres > 0 ? cost / litres : null,
+      odometer:        entry.odometer ? parseFloat(entry.odometer) : null,
+      notes:           entry.notes || null,
+    }
+    const { error } = await supabase.from('fuel_purchases').insert(row)
+    if (!error) await fetch()
+    return { error }
+  }
+
+  const update = async (id, entry) => {
+    const litres = parseFloat(entry.litres)
+    const cost   = parseFloat(entry.cost)
+    const row = {
+      date:            entry.date,
+      litres,
+      cost,
+      price_per_litre: litres > 0 ? cost / litres : null,
+      odometer:        entry.odometer ? parseFloat(entry.odometer) : null,
+      notes:           entry.notes || null,
+    }
+    const { error } = await supabase.from('fuel_purchases').update(row).eq('id', id)
+    if (!error) await fetch()
+    return { error }
+  }
+
+  const remove = async (id) => {
+    const { error } = await supabase.from('fuel_purchases').delete().eq('id', id)
+    if (!error) await fetch()
+    return { error }
+  }
+
+  return { entries, loading, add, update, remove, refresh: fetch }
+}
+
 // ─── Household Config (Bond, Medical, Insurance) ─────────────
 export function useHouseholdConfig(category) {
   const [data, setData] = useState(null)

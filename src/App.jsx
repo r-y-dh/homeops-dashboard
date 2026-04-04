@@ -7,6 +7,7 @@ import OverviewPage from './pages/Overview'
 import ElectricityPage from './pages/Electricity'
 import MunicipalPage from './pages/Municipal'
 import ConfigPage from './pages/ConfigPage'
+import FuelPage from './pages/Fuel'
 import { Empty } from './components/UI'
 
 const bondFields = [
@@ -75,6 +76,7 @@ export default function App() {
       case 'overview':    return <OverviewPage />
       case 'electricity': return <ElectricityPage />
       case 'municipal':   return <MunicipalPage />
+      case 'fuel':        return <FuelPage />
       case 'bond':        return <ConfigPage category="bond" title="Home Loan" icon={MODULES.find(m => m.id === 'bond').Icon} subtitle="Bond repayment & balance" fields={bondFields} emptyDesc="Add your home loan details to track repayments and remaining balance." />
       case 'medical':     return <ConfigPage category="medical" title="Medical Aid" icon={MODULES.find(m => m.id === 'medical').Icon} subtitle="Provider, plan & premium" fields={medFields} emptyDesc="Add your medical aid details to track premiums and escalations." />
       case 'insurance':   return <ConfigPage category="insurance" title="Insurance" icon={MODULES.find(m => m.id === 'insurance').Icon} subtitle="Home, contents & vehicle" fields={insFields} emptyDesc="Add your insurance policies to track total premium outflow." />

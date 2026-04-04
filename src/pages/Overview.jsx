@@ -1,20 +1,21 @@
 import { useState } from 'react'
 import { SquaresFour } from '@phosphor-icons/react'
 import { T } from '../lib/constants'
-import { useElectricity, useMunicipal, useHouseholdConfig } from '../lib/hooks'
+import { useElectricity, useMunicipal, useFuel, useHouseholdConfig } from '../lib/hooks'
 import { supabase } from '../lib/supabase'
 import { Stat, SectionLabel } from '../components/UI'
 import BufferGauge from '../components/BufferGauge'
 import AddFileDropdown from '../components/AddFileDropdown'
 
 export default function OverviewPage() {
-  const { entries: elec, loading: l1 } = useElectricity()
-  const { entries: muni, loading: l2 } = useMunicipal()
+  const { entries: elec, loading: l1, add: addElec } = useElectricity()
+  const { entries: muni, loading: l2, add: addMuni } = useMunicipal()
+  const { entries: fuel, loading: l6, add: addFuel } = useFuel()
   const { data: bond, loading: l3 } = useHouseholdConfig('bond')
   const { data: medical, loading: l4 } = useHouseholdConfig('medical')
   const { data: insurance, loading: l5 } = useHouseholdConfig('insurance')
 
-  const loading = l1 || l2 || l3 || l4 || l5
+  const loading = l1 || l2 || l3 || l4 || l5 || l6
   const [uploadState, setUploadState] = useState('idle') // idle | parsing | success | error
   const [uploadMsg, setUploadMsg]   = useState('')
 
@@ -39,7 +40,7 @@ export default function OverviewPage() {
       const d = result.data || result
 
       if (result.type === 'electricity_topup') {
-        const { error } = await elec.add({
+        const { error } = await addElec({
           date:       d.date || new Date().toISOString().slice(0, 10),
           amount:     d.amount     ?? 0,
           serviceFee: d.service_fee ?? 200,
@@ -49,8 +50,8 @@ export default function OverviewPage() {
         if (error) throw new Error(error.message)
         setUploadMsg('Electricity top-up saved.')
       } else if (result.type === 'municipal' || result.type === 'dab_dashboard') {
-        const waterKl = result.type === 'dab_dashboard' ? d.water_kl : d.water_kl
-        const { error } = await muni.add({
+        const waterKl = d.water_kl
+        const { error } = await addMuni({
           month:           d.month || d.current_month || '',
           water:           d.water           ?? 0,
           rates:           d.rates           ?? 0,
@@ -66,6 +67,16 @@ export default function OverviewPage() {
         })
         if (error) throw new Error(error.message)
         setUploadMsg('Municipal data saved.')
+      } else if (result.type === 'fuel_receipt') {
+        const { error } = await addFuel({
+          date:     d.date || new Date().toISOString().slice(0, 10),
+          litres:   d.litres   ?? 0,
+          cost:     d.cost     ?? 0,
+          odometer: d.odometer ?? '',
+          notes:    '',
+        })
+        if (error) throw new Error(error.message)
+        setUploadMsg('Fuel fill-up saved.')
       } else {
         setUploadMsg('Could not identify data type — try uploading on the specific page.')
         setUploadState('error')
@@ -88,16 +99,19 @@ export default function OverviewPage() {
   const latestBalance = [...elec].reverse().find(e => e.balance !== null)?.balance || 0
   const muniLatest = muni.length ? muni[muni.length-1] : null
   const muniTotal = muniLatest ? Number(muniLatest.total) : 0
+  const fuelMonth = fuel.filter(e => e.date.startsWith(thisMonth))
+  const fuelSpend = fuelMonth.reduce((s, e) => s + Number(e.cost), 0)
   const bondAmt = bond?.repayment ? parseFloat(bond.repayment) : 0
   const medAmt = medical?.premium ? parseFloat(medical.premium) : 0
   const insAmt = insurance?.totalPremium ? parseFloat(insurance.totalPremium) : 0
-  const totalMonthly = elecSpend + muniTotal + bondAmt + medAmt + insAmt
+  const totalMonthly = elecSpend + muniTotal + fuelSpend + bondAmt + medAmt + insAmt
   const fixedCosts = bondAmt + medAmt + insAmt
-  const variableCosts = elecSpend + muniTotal
+  const variableCosts = elecSpend + muniTotal + fuelSpend
 
   const modules = [
     { name: 'Electricity', active: elec.length > 0, value: elecSpend ? `R${elecSpend.toLocaleString()}` : 'Active' },
     { name: 'Municipal', active: muni.length > 0, value: muniTotal ? `R${muniTotal.toLocaleString()}` : null },
+    { name: 'Fuel', active: fuel.length > 0, value: fuelSpend ? `R${fuelSpend.toLocaleString()}` : null },
     { name: 'Bond', active: !!bond, value: bondAmt ? `R${bondAmt.toLocaleString()}` : null },
     { name: 'Medical Aid', active: !!medical, value: medAmt ? `R${medAmt.toLocaleString()}` : null },
     { name: 'Insurance', active: !!insurance, value: insAmt ? `R${insAmt.toLocaleString()}` : null },
@@ -114,7 +128,7 @@ export default function OverviewPage() {
             <h2 style={{ margin: 0, fontSize: 20, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
               <SquaresFour size={20} weight="fill" /> Home OPS Command Centre
             </h2>
-            <div style={{ fontSize: 12, color: T.textDim, marginTop: 3 }}>Riyadh Gordon • Johannesburg • {populated}/6 modules active</div>
+            <div style={{ fontSize: 12, color: T.textDim, marginTop: 3 }}>Riyadh Gordon • Johannesburg • {populated}/7 modules active</div>
           </div>
           <AddFileDropdown
             onFile={handleFile}

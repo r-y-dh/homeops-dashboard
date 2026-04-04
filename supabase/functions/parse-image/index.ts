@@ -47,10 +47,24 @@ For date: use today's date in YYYY-MM-DD format if not clearly shown. Service fe
   }
 }`
 
+      : context === 'fuel_receipt'
+      ? `Extract fuel fill-up data from this receipt. Return ONLY a JSON object:
+{
+  "type": "fuel_receipt",
+  "data": {
+    "date": "YYYY-MM-DD",
+    "litres": <litres pumped as number>,
+    "cost": <total rands paid as number>,
+    "price_per_litre": <price per litre as number>,
+    "odometer": <odometer reading as number or null if not shown>
+  }
+}
+Use today's date in YYYY-MM-DD format if not clearly visible on the receipt.`
+
       : `Analyze this image and extract utility/home finance data. Determine what type of image this is and return ONLY a JSON object:
 
 {
-  "type": "electricity_topup" | "municipal" | "dab_dashboard" | "unknown",
+  "type": "electricity_topup" | "municipal" | "dab_dashboard" | "fuel_receipt" | "unknown",
   "data": { ... }
 }
 
@@ -62,6 +76,9 @@ data: { "month": "YYYY-MM", "water": <R>, "rates": <R>, "refuse": <R>, "sewerage
 
 For "dab_dashboard" (DAB utility dashboard showing water mc and kWh usage):
 data: { "current_month": "YYYY-MM", "water_kl": <current month water in mc/kL as number>, "prev_water_kl": <previous month>, "units_kwh": <current month kWh as number>, "prev_units_kwh": <previous month kWh> }
+
+For "fuel_receipt" (petrol station receipt):
+data: { "date": "YYYY-MM-DD", "litres": <L>, "cost": <total R>, "price_per_litre": <R/L>, "odometer": <km or null> }
 
 Use today's date to infer the current month if needed. Return ONLY the JSON.`
 
