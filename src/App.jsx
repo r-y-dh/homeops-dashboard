@@ -8,6 +8,7 @@ import ElectricityPage from './pages/Electricity'
 import MunicipalPage from './pages/Municipal'
 import ConfigPage from './pages/ConfigPage'
 import FuelPage from './pages/Fuel'
+import BudgetPage from './pages/Budget'
 import { Empty } from './components/UI'
 
 const bondFields = [
@@ -74,6 +75,7 @@ export default function App() {
   const render = () => {
     switch (tab) {
       case 'overview':    return <OverviewPage />
+      case 'budget':      return <BudgetPage />
       case 'electricity': return <ElectricityPage />
       case 'municipal':   return <MunicipalPage />
       case 'fuel':        return <FuelPage />

@@ -20,10 +20,11 @@ export const T = {
   greenGlow: 'rgba(16,185,129,0.08)',
 }
 
-import { SquaresFour, Lightning, Buildings, House, FirstAidKit, ShieldCheck, Sun, GasPump } from '@phosphor-icons/react'
+import { SquaresFour, Lightning, Buildings, House, FirstAidKit, ShieldCheck, Sun, GasPump, Wallet } from '@phosphor-icons/react'
 
 export const MODULES = [
   { id: 'overview',     label: 'Overview',    Icon: SquaresFour },
+  { id: 'budget',       label: 'Budget',       Icon: Wallet      },
   { id: 'electricity',  label: 'Electricity',  Icon: Lightning   },
   { id: 'municipal',    label: 'Municipal',    Icon: Buildings   },
   { id: 'fuel',         label: 'Fuel',         Icon: GasPump     },
