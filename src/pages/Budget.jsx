@@ -68,7 +68,7 @@ export default function BudgetPage() {
                 onChange={(e) => setMonth(e.target.value)}
                 style={{ ...inp, width: 140 }}
               />
-              <button onClick={nextMonth} style={{ background: none, border: 'none', color: T.cyan, cursor: 'pointer', fontSize: 20 }}><CaretRight size={20} /></button>
+              <button onClick={nextMonth} style={{ background: 'none', border: 'none', color: T.cyan, cursor: 'pointer', fontSize: 20 }}><CaretRight size={20} /></button>
             </div>
             <UploadStatementButton month={month} onImport={addBatch} setOpeningBalance={setOpeningBalance} />
           </div>

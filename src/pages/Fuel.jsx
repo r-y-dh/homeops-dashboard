@@ -51,11 +51,16 @@ export default function FuelPage() {
 
   const handleSubmit = async () => {
     if (!form.date || !form.litres || !form.cost) return
+    let result
     if (editId) {
-      await update(editId, form)
+      result = await update(editId, form)
       setEditId(null)
     } else {
-      await add(form)
+      result = await add(form)
+    }
+    if (result?.error) {
+      setParseError(result.error.message)
+      return
     }
     setForm({ date: '', litres: '', cost: '', odometer: '', notes: '' })
     setShowForm(false)
