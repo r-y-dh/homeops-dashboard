@@ -26,6 +26,7 @@ create policy "Users can insert own fuel purchases" on fuel_purchases for insert
 create policy "Users can update own fuel purchases" on fuel_purchases for update using (auth.uid() = user_id);
 create policy "Users can delete own fuel purchases" on fuel_purchases for delete using (auth.uid() = user_id);
 
-create trigger if not exists fuel_purchases_updated_at
+drop trigger if exists fuel_purchases_updated_at on fuel_purchases;
+create trigger fuel_purchases_updated_at
   before update on fuel_purchases
   for each row execute function update_updated_at();
