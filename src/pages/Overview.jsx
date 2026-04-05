@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SquaresFour } from '@phosphor-icons/react'
 import { T } from '../lib/constants'
-import { useElectricity, useMunicipal, useFuel, useHouseholdConfig } from '../lib/hooks'
+import { useElectricity, useMunicipal, useFuel, useHouseholdConfig, useBudgetMonth } from '../lib/hooks'
 import { supabase } from '../lib/supabase'
 import { Stat, SectionLabel } from '../components/UI'
 import BufferGauge from '../components/BufferGauge'
@@ -14,8 +14,10 @@ export default function OverviewPage() {
   const { data: bond, loading: l3 } = useHouseholdConfig('bond')
   const { data: medical, loading: l4 } = useHouseholdConfig('medical')
   const { data: insurance, loading: l5 } = useHouseholdConfig('insurance')
+  const thisMonth = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`
+  const { totalRemaining, loading: l7 } = useBudgetMonth(thisMonth)
 
-  const loading = l1 || l2 || l3 || l4 || l5 || l6
+  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7
   const [uploadState, setUploadState] = useState('idle') // idle | parsing | success | error
   const [uploadMsg, setUploadMsg]   = useState('')
 
@@ -92,8 +94,6 @@ export default function OverviewPage() {
 
   if (loading) return <div style={{ color: T.textMuted, padding: 40 }}>Loading…</div>
 
-  const now = new Date()
-  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
   const elecMonth = elec.filter(e => e.date.startsWith(thisMonth))
   const elecSpend = elecMonth.reduce((s,e) => s + Number(e.amount), 0)
   const latestBalance = [...elec].reverse().find(e => e.balance !== null)?.balance || 0
@@ -115,6 +115,7 @@ export default function OverviewPage() {
     { name: 'Bond', active: !!bond, value: bondAmt ? `R${bondAmt.toLocaleString()}` : null },
     { name: 'Medical Aid', active: !!medical, value: medAmt ? `R${medAmt.toLocaleString()}` : null },
     { name: 'Insurance', active: !!insurance, value: insAmt ? `R${insAmt.toLocaleString()}` : null },
+    { name: 'Budget', active: totalRemaining != null, value: totalRemaining != null ? `R${totalRemaining.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} left` : null },
     { name: 'Solar', active: false, value: null },
   ]
   const populated = modules.filter(m => m.active).length
@@ -152,6 +153,7 @@ export default function OverviewPage() {
           <Stat label="Total Monthly" value={totalMonthly > 0 ? totalMonthly.toLocaleString() : '—'} prefix="R" color={T.cyan} sub="Known costs only" />
           <Stat label="Fixed" value={fixedCosts > 0 ? fixedCosts.toLocaleString() : '—'} prefix="R" sub="Bond + Medical + Insurance" />
           <Stat label="Variable" value={variableCosts > 0 ? variableCosts.toLocaleString() : '—'} prefix="R" sub="Electricity + Municipal" />
+          {totalRemaining != null && <Stat label="Remaining" value={totalRemaining.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} prefix="R" color={totalRemaining >= 0 ? T.green : T.red} sub="After debit orders & spend" />}
         </div>
       </div>
 
