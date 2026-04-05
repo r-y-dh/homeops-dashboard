@@ -16,15 +16,16 @@ create table if not exists fuel_purchases (
 
 alter table fuel_purchases enable row level security;
 
-create policy "Users can view own fuel purchases"
-  on fuel_purchases for select using (auth.uid() = user_id);
-create policy "Users can insert own fuel purchases"
-  on fuel_purchases for insert with check (auth.uid() = user_id);
-create policy "Users can update own fuel purchases"
-  on fuel_purchases for update using (auth.uid() = user_id);
-create policy "Users can delete own fuel purchases"
-  on fuel_purchases for delete using (auth.uid() = user_id);
+drop policy if exists "Users can view own fuel purchases"   on fuel_purchases;
+drop policy if exists "Users can insert own fuel purchases" on fuel_purchases;
+drop policy if exists "Users can update own fuel purchases" on fuel_purchases;
+drop policy if exists "Users can delete own fuel purchases" on fuel_purchases;
 
-create trigger fuel_purchases_updated_at
+create policy "Users can view own fuel purchases"   on fuel_purchases for select using (auth.uid() = user_id);
+create policy "Users can insert own fuel purchases" on fuel_purchases for insert with check (auth.uid() = user_id);
+create policy "Users can update own fuel purchases" on fuel_purchases for update using (auth.uid() = user_id);
+create policy "Users can delete own fuel purchases" on fuel_purchases for delete using (auth.uid() = user_id);
+
+create trigger if not exists fuel_purchases_updated_at
   before update on fuel_purchases
   for each row execute function update_updated_at();
