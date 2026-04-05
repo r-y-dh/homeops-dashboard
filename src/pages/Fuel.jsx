@@ -14,21 +14,38 @@ export default function FuelPage() {
   const [parseState, setParseState] = useState('idle')
   const [parseError, setParseError] = useState('')
 
+  const compressImage = (file) => new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const MAX = 1600
+      let { width, height } = img
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.round(height * MAX / width); width = MAX }
+        else { width = Math.round(width * MAX / height); height = MAX }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1]
+      resolve({ base64, mime_type: 'image/jpeg' })
+    }
+    img.src = url
+  })
+
   const handleFile = async (file) => {
     setParseState('parsing')
     setParseError('')
     try {
-      const arrayBuffer = await file.arrayBuffer()
-      const bytes = new Uint8Array(arrayBuffer)
-      let binary = ''
-      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
-      const base64 = btoa(binary)
+      const { base64, mime_type } = await compressImage(file)
 
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({ image_base64: base64, mime_type: file.type, context: 'fuel_receipt' }),
+        body: JSON.stringify({ image_base64: base64, mime_type, context: 'fuel_receipt' }),
       })
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to parse')
       const result = await res.json()
