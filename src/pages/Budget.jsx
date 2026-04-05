@@ -276,11 +276,9 @@ function UploadStatementButton({ month, onImport, setOpeningBalance }) {
   }
 
   return (
-    <label style={{ cursor: 'pointer' }}>
+    <label style={{ cursor: 'pointer', background: T.cyan, color: T.bg, borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
       <input type="file" accept=".csv,.pdf" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} style={{ display: 'none' }} />
-      <button style={{ background: T.cyan, color: T.bg, border: 'none', borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Upload size={16} /> {state === 'uploading' ? 'Uploading...' : 'Upload Statement'}
-      </button>
+      <Upload size={16} /> {state === 'uploading' ? 'Uploading...' : 'Upload Statement'}
     </label>
   )
 }
