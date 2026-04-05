@@ -3,7 +3,7 @@ import { T } from '../lib/constants'
 import { supabase } from '../lib/supabase'
 import { useBudgetAccounts, useDebitOrders, useBudgetCategories, useBudgetTransactions, useBudgetMonth } from '../lib/hooks'
 import { Stat, FormField, SectionLabel, Empty, inp, Card } from '../components/UI'
-import { ChevronLeft, ChevronRight, Upload, Plus, X, Pencil, Trash } from '@phosphor-icons/react'
+import { CaretLeft, CaretRight, Upload, Plus, X, Pencil, Trash } from '@phosphor-icons/react'
 
 export default function BudgetPage() {
   const [activeTab, setActiveTab] = useState('month')
@@ -61,14 +61,14 @@ export default function BudgetPage() {
           {/* Month selector + upload */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button onClick={prevMonth} style={{ background: 'none', border: 'none', color: T.cyan, cursor: 'pointer', fontSize: 20 }}><ChevronLeft size={20} /></button>
+              <button onClick={prevMonth} style={{ background: 'none', border: 'none', color: T.cyan, cursor: 'pointer', fontSize: 20 }}><CaretLeft size={20} /></button>
               <input
                 type="month"
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
                 style={{ ...inp, width: 140 }}
               />
-              <button onClick={nextMonth} style={{ background: none, border: 'none', color: T.cyan, cursor: 'pointer', fontSize: 20 }}><ChevronRight size={20} /></button>
+              <button onClick={nextMonth} style={{ background: none, border: 'none', color: T.cyan, cursor: 'pointer', fontSize: 20 }}><CaretRight size={20} /></button>
             </div>
             <UploadStatementButton month={month} onImport={addBatch} setOpeningBalance={setOpeningBalance} />
           </div>
