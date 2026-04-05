@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { List, X } from '@phosphor-icons/react'
+import { useState } from 'react'
 import { T, MODULES } from './lib/constants'
 import { useAuth } from './lib/hooks'
 import Login from './components/Login'
@@ -10,6 +9,14 @@ import ConfigPage from './pages/ConfigPage'
 import FuelPage from './pages/Fuel'
 import BudgetPage from './pages/Budget'
 import { Empty } from './components/UI'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import {
+  Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
+  SidebarMenu, SidebarMenuItem, SidebarMenuButton,
+  SidebarProvider, SidebarTrigger, SidebarInset,
+  SidebarGroup, SidebarGroupLabel, SidebarGroupContent,
+} from '@/components/ui/sidebar'
+import { Separator } from '@/components/ui/separator'
 
 const bondFields = [
   { key: 'bank', label: 'Bank', placeholder: 'e.g. FNB' },
@@ -19,7 +26,6 @@ const bondFields = [
   { key: 'termRemaining', label: 'Term Remaining (months)', type: 'number' },
   { key: 'originalTerm', label: 'Original Term (years)', type: 'number' },
 ]
-
 const medFields = [
   { key: 'provider', label: 'Provider', placeholder: 'e.g. Discovery' },
   { key: 'plan', label: 'Plan Name', placeholder: 'e.g. Classic Saver' },
@@ -28,7 +34,6 @@ const medFields = [
   { key: 'lastIncrease', label: 'Last Increase (%)', type: 'number' },
   { key: 'nextReview', label: 'Next Review', placeholder: 'e.g. 2026-01' },
 ]
-
 const insFields = [
   { key: 'homeProvider', label: 'Home Provider' },
   { key: 'homePremium', label: 'Home Premium (R/mo)', type: 'number', prefix: 'R' },
@@ -42,29 +47,87 @@ const insFields = [
 
 function SolarPlaceholder() {
   return (
-    <div style={{ padding: '24px 28px' }}>
+    <div className="p-7">
       <Empty title="Solar Planning — Coming Soon" desc="Once your electricity baseline is established, this module will help you size a system, compare rent-to-own providers, and model payback." fields={['Baseline daily usage', 'Daytime vs evening load split', 'Provider quotes', 'System size (kW + kWh)']} />
     </div>
   )
 }
 
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 680)
-  useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 680)
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
-  }, [])
-  return isMobile
+const PRIMARY_NAV = ['overview', 'budget', 'electricity', 'municipal', 'fuel']
+const SECONDARY_NAV = ['bond', 'medical', 'insurance', 'solar']
+
+function AppSidebar({ tab, setTab, signOut }) {
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <div className="flex items-center gap-2 px-2 py-3">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold shrink-0">H</div>
+          <span className="font-bold text-sm tracking-widest uppercase text-primary group-data-[collapsible=icon]:hidden">Home OPS</span>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {PRIMARY_NAV.map(id => {
+                const m = MODULES.find(x => x.id === id)
+                return (
+                  <SidebarMenuItem key={id}>
+                    <SidebarMenuButton isActive={tab === id} onClick={() => setTab(id)} tooltip={m.label}>
+                      <m.Icon size={16} weight={tab === id ? 'fill' : 'regular'} />
+                      <span>{m.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Fixed Costs</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {SECONDARY_NAV.map(id => {
+                const m = MODULES.find(x => x.id === id)
+                return (
+                  <SidebarMenuItem key={id}>
+                    <SidebarMenuButton isActive={tab === id} onClick={() => setTab(id)} tooltip={m.label}>
+                      <m.Icon size={16} weight={tab === id ? 'fill' : 'regular'} />
+                      <span>{m.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={signOut} tooltip="Sign out">
+              <span className="text-muted-foreground text-xs">Sign out</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  )
 }
 
 export default function App() {
   const { user, loading, signIn, signUp, signOut } = useAuth()
   const [tab, setTab] = useState('overview')
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const isMobile = useIsMobile()
 
-  if (loading) return <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.textMuted }}>Loading…</div>
+  if (loading) return (
+    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
+      Loading…
+    </div>
+  )
 
   if (!user) {
     return <Login onAuth={async (email, password, isSignUp) => {
@@ -87,68 +150,23 @@ export default function App() {
     }
   }
 
-  const navItem = (m) => (
-    <div key={m.id} onClick={() => { setTab(m.id); setMobileMenuOpen(false) }} style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      padding: isMobile ? '12px 16px' : '6px 12px',
-      borderRadius: isMobile ? 8 : 7,
-      cursor: 'pointer',
-      background: tab === m.id ? T.cyanGlow : 'transparent',
-      color: tab === m.id ? T.cyan : T.textMuted,
-      fontSize: 13, fontWeight: tab === m.id ? 600 : 400,
-      borderBottom: !isMobile && tab === m.id ? `2px solid ${T.cyan}` : !isMobile ? '2px solid transparent' : 'none',
-      transition: 'all 0.15s',
-      width: isMobile ? '100%' : 'auto',
-    }}>
-      <m.Icon size={16} weight={tab === m.id ? 'fill' : 'regular'} />
-      <span>{m.label}</span>
-    </div>
-  )
-
   return (
-    <div style={{ fontFamily: "'DM Sans', -apple-system, sans-serif", background: T.bg, color: T.text, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-
-      {/* Top nav bar */}
-      <div style={{
-        height: 52, background: T.surface, borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', padding: '0 16px', gap: 4,
-        position: 'sticky', top: 0, zIndex: 100, flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: T.cyan, letterSpacing: 2, textTransform: 'uppercase', marginRight: isMobile ? 0 : 12 }}>Home OPS</span>
-
-        {/* Desktop nav items */}
-        {!isMobile && MODULES.map(navItem)}
-
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-          {!isMobile && <span onClick={signOut} style={{ fontSize: 12, color: T.textDim, cursor: 'pointer' }}>Sign out</span>}
-          {isMobile && (
-            <div onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ cursor: 'pointer', color: T.textMuted, display: 'flex', alignItems: 'center' }}>
-              {mobileMenuOpen ? <X size={22} /> : <List size={22} />}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile dropdown menu */}
-      {isMobile && mobileMenuOpen && (
-        <div style={{
-          position: 'fixed', top: 52, left: 0, right: 0, bottom: 0,
-          background: T.surface, zIndex: 99, padding: '8px 8px',
-          borderTop: `1px solid ${T.border}`, overflowY: 'auto',
-          display: 'flex', flexDirection: 'column',
-        }}>
-          {MODULES.map(navItem)}
-          <div style={{ marginTop: 'auto', padding: '16px 16px 8px' }}>
-            <span onClick={() => { signOut(); setMobileMenuOpen(false) }} style={{ fontSize: 13, color: T.textDim, cursor: 'pointer' }}>Sign out</span>
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar tab={tab} setTab={setTab} signOut={signOut} />
+        <SidebarInset>
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="h-4 mx-1" />
+            <span className="text-sm font-medium text-muted-foreground">
+              {MODULES.find(m => m.id === tab)?.label}
+            </span>
+          </header>
+          <div className="flex-1 overflow-y-auto">
+            {render()}
           </div>
-        </div>
-      )}
-
-      {/* Page content */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        {render()}
-      </div>
-    </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   )
 }
